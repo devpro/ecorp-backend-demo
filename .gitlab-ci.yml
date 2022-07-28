@@ -1,0 +1,50 @@
+stages:
+  - integrate
+  - package
+  # - deploy
+
+variables:
+  # defined in GitLab project configuration (Settings > CI/CD > Variables)
+  # CONTAINER_REGISTRY_PASSWD
+  # CONTAINER_REGISTRY_USER
+  # CONTAINER_REGISTRY_DOMAIN
+  # CONTAINER_REGISTRY_FOLDER
+  # container information
+  CONTAINER_REPOSITORY: "$CONTAINER_REGISTRY_DOMAIN/$CONTAINER_REGISTRY_FOLDER/ecorp-backend-demo"
+  CONTAINER_APP_VERSION: "1.0.$CI_PIPELINE_ID"
+
+code-quality:
+  image: mcr.microsoft.com/dotnet/sdk:6.0
+  stage: integrate
+  before_script:
+    # dotnet cli tools
+    - dotnet tool install -g dotnet-format --version "6.*" --add-source https://pkgs.dev.azure.com/dnceng/public/_packaging/dotnet6/nuget/v3/index.json
+    - export PATH="$PATH:/root/.dotnet/tools"
+  script:
+    # lint
+    - dotnet-format --verify-no-changes --severity warn --verbosity:diagnostic
+    # build
+    - dotnet restore
+    - dotnet build --no-restore --configuration Debug
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+      when: always
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+      when: always
+    - if: $CI_PIPELINE_SOURCE == "web"
+      when: manual
+      allow_failure: true
+
+container-image:
+  image:
+    name: quay.io/containers/podman
+  stage: package
+  script:
+    - podman build --format docker -f src/WebApi/Dockerfile -t $CONTAINER_REPOSITORY:$CONTAINER_APP_VERSION .
+    - podman login -u $CONTAINER_REGISTRY_USER -p $CONTAINER_REGISTRY_PASSWD $CONTAINER_REGISTRY_DOMAIN
+    - podman push $CONTAINER_REPOSITORY:$CONTAINER_APP_VERSION
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+      when: always
+    - if: $CI_PIPELINE_SOURCE == "web"
+      when: always
