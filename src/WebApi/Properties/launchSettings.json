@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json.schemastore.org/launchsettings.json",
+  "profiles": {
+    "WebApi": {
+      "commandName": "Project",
+      "launchBrowser": true,
+      "launchUrl": "swagger",
+      "environmentVariables": {
+        "AllowedOrigins__0": "http://localhost:4200",
+        "Application__IsHttpsRedirectionEnabled": "false",
+        "Application__IsSwaggerEnabled": "true",
+        "Application__IsOpenTelemetryEnabled": "true",
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "Logging__LogLevel__Microsoft__AspNetCore": "Information",
+        "Logging__LogLevel__System": "Information",
+        "Logging__LogLevel__Ecorp": "Debug",
+        "OpenTelemetry__CollectorEndpoint": "http://localhost:4317",
+      },
+      "applicationUrl": "https://localhost:7148;http://localhost:5148",
+      "dotnetRunMessages": true
+    },
+    "Docker": {
+      "commandName": "Docker",
+      "launchBrowser": true,
+      "launchUrl": "{Scheme}://{ServiceHost}:{ServicePort}/swagger",
+      "publishAllPorts": true,
+      "useSSL": true
+    }
+  }
+}
