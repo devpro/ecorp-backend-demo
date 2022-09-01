@@ -54,6 +54,7 @@ container-image:
       when: always
 
 neuvector_scan:
+  stage: scan
   variables:
     # image_registry_url: "https://registry.hub.docker.com"
     image_registry_url: $CONTAINER_REGISTRY_DOMAIN
