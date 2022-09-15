@@ -1,6 +1,10 @@
+include:
+ - remote: 'https://gitlab.com/neuvector/gitlab-plugin/-/raw/master/scan.yml'
+
 stages:
   - integrate
   - package
+  - scan
   # - deploy
 
 variables:
@@ -42,9 +46,41 @@ container-image:
   script:
     - podman build --format docker -f src/WebApi/Dockerfile -t $CONTAINER_REPOSITORY:$CONTAINER_APP_VERSION .
     - podman login -u $CONTAINER_REGISTRY_USER -p $CONTAINER_REGISTRY_PASSWD $CONTAINER_REGISTRY_DOMAIN
-    - podman push $CONTAINER_REPOSITORY:$CONTAINER_APP_VERSION
+    - podman save --output images.tar $CONTAINER_REPOSITORY:$CONTAINER_APP_VERSION
+    - if [ "$CI_COMMIT_BRANCH" == "$CI_DEFAULT_BRANCH" ]; then podman push $CONTAINER_REPOSITORY:$CONTAINER_APP_VERSION; fi
   rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+      when: always
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
       when: always
     - if: $CI_PIPELINE_SOURCE == "web"
+      when: manual
+  artifacts:
+    expire_in: 1 hours
+    paths:
+      - images.tar
+
+neuvector_scan:
+  stage: scan
+  variables:
+    #image_registry_url: "https://registry-1.docker.io"
+    #image_registry_user: $CONTAINER_REGISTRY_USER
+    #image_registry_password: $CONTAINER_REGISTRY_PASSWD
+    scan_local_image: "true"
+    image_tar: "images.tar"
+    image_repo: $CONTAINER_REPOSITORY
+    image_tag: $CONTAINER_APP_VERSION
+    nv_registry_user: $CONTAINER_REGISTRY_USER
+    nv_registry_password: $CONTAINER_REGISTRY_PASSWD
+    scan_layers: "false"
+    #official images from Microsoft (https://github.com/dotnet/dotnet-docker): to be reviewed
+    high_vul_to_fail: 15
+    medium_vul_to_fail: 9
+    vul_names_to_fail: "CVE-2020-1971, CVE-2020-1972"
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
       when: always
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+      when: always
+    - if: $CI_PIPELINE_SOURCE == "web"
+      when: manual

@@ -1,6 +1,6 @@
 # E Corp backend demo application
 
-[![Latest docker image version](https://img.shields.io/docker/v/devprofr/ecorp-backend-demo.svg)](https://hub.docker.com/r/devprofr/ecorp-backend-demo)
+[![Docker Image Version (latest semver)](https://img.shields.io/docker/v/devprofr/ecorp-backend-demo?label=Docker)](https://hub.docker.com/r/devprofr/ecorp-backend-demo)
 
 Demonstration of a simple backend for E Corp (from [Mr Robot](https://en.wikipedia.org/wiki/Mr._Robot)). It is a web service application (a REST API to be precise), written in C#, using .NET Framework (free, open source, cross platform).
 
