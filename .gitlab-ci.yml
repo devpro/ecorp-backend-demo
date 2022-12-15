@@ -40,14 +40,19 @@ code-quality:
       allow_failure: true
 
 container-image:
-  image:
-    name: quay.io/containers/podman
+  image: docker:19.03.13
+  services:
+    - docker:19.03.13-dind
   stage: package
+  before_script:
+    # https://gitlab.com/gitlab-org/gitlab-runner/-/issues/27215
+    # https://gitlab.com/gitlab-org/gitlab-runner/-/issues/27306
+    - until docker info; do sleep 1; done
   script:
-    - podman build --format docker -f src/WebApi/Dockerfile -t $CONTAINER_REPOSITORY:$CONTAINER_APP_VERSION .
-    - podman login -u $CONTAINER_REGISTRY_USER -p $CONTAINER_REGISTRY_PASSWD $CONTAINER_REGISTRY_DOMAIN
-    - podman save --output images.tar $CONTAINER_REPOSITORY:$CONTAINER_APP_VERSION
-    - if [ "$CI_COMMIT_BRANCH" == "$CI_DEFAULT_BRANCH" ]; then podman push $CONTAINER_REPOSITORY:$CONTAINER_APP_VERSION; fi
+    - docker build . -t $CONTAINER_REPOSITORY:$CONTAINER_APP_VERSION -f src/WebApi/Dockerfile
+    - docker login -u $CONTAINER_REGISTRY_USER -p $CONTAINER_REGISTRY_PASSWD $CONTAINER_REGISTRY_DOMAIN
+    - docker save -o images.tar $CONTAINER_REPOSITORY:$CONTAINER_APP_VERSION
+    - if [ "$CI_COMMIT_BRANCH" == "$CI_DEFAULT_BRANCH" ]; then docker push $CONTAINER_REPOSITORY:$CONTAINER_APP_VERSION; fi
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
       when: always
@@ -55,10 +60,18 @@ container-image:
       when: always
     - if: $CI_PIPELINE_SOURCE == "web"
       when: manual
+  tags:
+    - docker
+  timeout: 30 minutes
   artifacts:
     expire_in: 1 hours
     paths:
       - images.tar
+  variables:
+    DOCKER_HOST: tcp://docker:2376
+    DOCKER_TLS_CERTDIR: "/certs"
+    DOCKER_TLS_VERIFY: 1
+    DOCKER_CERT_PATH: "$DOCKER_TLS_CERTDIR/client"
 
 neuvector_scan:
   stage: scan
@@ -70,6 +83,7 @@ neuvector_scan:
     image_tar: "images.tar"
     image_repo: $CONTAINER_REPOSITORY
     image_tag: $CONTAINER_APP_VERSION
+    nv_registry_url: "https://$CONTAINER_REGISTRY_DOMAIN"
     nv_registry_user: $CONTAINER_REGISTRY_USER
     nv_registry_password: $CONTAINER_REGISTRY_PASSWD
     scan_layers: "false"
@@ -77,6 +91,16 @@ neuvector_scan:
     high_vul_to_fail: 15
     medium_vul_to_fail: 9
     vul_names_to_fail: "CVE-2020-1971, CVE-2020-1972"
+    DOCKER_HOST: tcp://docker:2376
+    DOCKER_TLS_CERTDIR: "/certs"
+    DOCKER_TLS_VERIFY: 1
+    DOCKER_CERT_PATH: "$DOCKER_TLS_CERTDIR/client"
+  before_script:
+    - apk add curl
+    - apk add jq
+    - until docker info; do sleep 1; done
+  tags:
+    - docker
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
       when: always
